@@ -53,23 +53,23 @@ spec:
     podCIDR: "10.128.0.0/14"
     serviceCIDR: "172.30.0.0/16"
   rolesRef:
-    ingressARN: "arn:aws:iam::471112697682:role/rtt-openshift-ingress-operator-cloud-credentials"
-    imageRegistryARN: "arn:aws:iam::471112697682:role/rtt-openshift-image-registry-installer-cloud-credentials"
-    storageARN: "arn:aws:iam::471112697682:role/rtt-openshift-cluster-csi-drivers-ebs-cloud-credentials"
-    networkARN: "arn:aws:iam::471112697682:role/rtt-openshift-cloud-network-config-controller-cloud-credentials"
-    kubeCloudControllerARN: "arn:aws:iam::471112697682:role/rtt-kube-system-kube-controller-manager"
-    nodePoolManagementARN: "arn:aws:iam::471112697682:role/rtt-kube-system-capa-controller-manager"
-    controlPlaneOperatorARN: "arn:aws:iam::471112697682:role/rtt-kube-system-control-plane-operator"
-    kmsProviderARN: "arn:aws:iam::471112697682:role/rtt-kube-system-kms-provider"
+    ingressARN: "arn:aws:iam::123456789012:role/rtt-openshift-ingress-operator-cloud-credentials"
+    imageRegistryARN: "arn:aws:iam::123456789012:role/rtt-openshift-image-registry-installer-cloud-credentials"
+    storageARN: "arn:aws:iam::123456789012:role/rtt-openshift-cluster-csi-drivers-ebs-cloud-credentials"
+    networkARN: "arn:aws:iam::123456789012:role/rtt-openshift-cloud-network-config-controller-cloud-credentials"
+    kubeCloudControllerARN: "arn:aws:iam::123456789012:role/rtt-kube-system-kube-controller-manager"
+    nodePoolManagementARN: "arn:aws:iam::123456789012:role/rtt-kube-system-capa-controller-manager"
+    controlPlaneOperatorARN: "arn:aws:iam::123456789012:role/rtt-kube-system-control-plane-operator"
+    kmsProviderARN: "arn:aws:iam::123456789012:role/rtt-kube-system-kms-provider"
   oidcID: "2j7lsccr04l7uogel2omfbrbomi8e5fv"
   subnets:
     - "subnet-0a0b562740c15ca93"
     - "subnet-04eb3817632508cc8"
   availabilityZones:
     - "us-west-2b"
-  installerRoleARN: "arn:aws:iam::471112697682:role/rtt-HCP-ROSA-Installer-Role"
-  supportRoleARN: "arn:aws:iam::471112697682:role/rtt-HCP-ROSA-Support-Role"
-  workerRoleARN: "arn:aws:iam::471112697682:role/rtt-HCP-ROSA-Worker-Role"
+  installerRoleARN: "arn:aws:iam::123456789012:role/rtt-HCP-ROSA-Installer-Role"
+  supportRoleARN: "arn:aws:iam::123456789012:role/rtt-HCP-ROSA-Support-Role"
+  workerRoleARN: "arn:aws:iam::123456789012:role/rtt-HCP-ROSA-Worker-Role"
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
 kind: AWSClusterControllerIdentity

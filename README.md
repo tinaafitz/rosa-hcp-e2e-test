@@ -165,6 +165,9 @@ rosa-hcp-e2e-test/
 
 ## Key Features
 
+- Extendable framework for ROSA-HCP features test-case eg; Adding machinePool with fips enable
+- Using AI agent to monitor the test logs and provide solution and fixes
+
 ### Automated Network Setup
 - Creates VPC, subnets, and security groups via CloudFormation
 - Configures private hosted zones for cluster DNS
@@ -174,12 +177,6 @@ rosa-hcp-e2e-test/
 - Automatically creates ROSA-required IAM roles
 - Configures OIDC provider for pod identity
 - Sets up installer and control plane roles
-
-### Resource Cleanup with Stuck Deletion Handling
-- Proper deletion order (MachinePool → ControlPlane → Network → Roles)
-- **Automatic finalizer removal** for stuck ROSANetwork deletions
-- Handles orphaned security groups that prevent CloudFormation deletion
-- Cleans up Kubernetes resources even when AWS CloudFormation fails
 
 ### CI/CD Integration
 - Jenkins pipeline support via `Jenkinsfile`
@@ -355,14 +352,6 @@ Contributions are welcome! Please follow these guidelines:
 - Add comments for complex logic
 - Use meaningful variable names
 - Keep tasks idempotent
-
-## Known Issues
-
-- **ROSANetwork deletion timeout**: CloudFormation stack deletion can take 15-30 minutes when security groups have dependencies. The framework handles this automatically with finalizer removal.
-
-- **OCM rate limiting**: High-frequency cluster operations may hit OCM rate limits. Add delays between test runs if encountering rate limit errors.
-
-- **FIPS support**: FIPS-enabled clusters require OpenShift 4.21+ and specific AWS instance types. See [FIPS documentation](https://docs.openshift.com/rosa/rosa_architecture/rosa_policy_service_definition/rosa-policy-compliance.html#rosa-policy-compliance-fips_rosa-policy-compliance).
 
 ## Support
 

@@ -1,0 +1,142 @@
+{
+  "version": "1.0.0",
+  "description": "Known issues and error patterns for ROSA HCP test automation",
+  "patterns": [
+    {
+      "type": "rosanetwork_stuck_deletion",
+      "pattern": ".*rosanetwork.*delete.*timeout.*",
+      "severity": "high",
+      "auto_fix": true,
+      "description": "ROSANetwork resource stuck in deletion state with finalizers",
+      "symptoms": [
+        "Resource has deletionTimestamp but still exists",
+        "Finalizers preventing deletion",
+        "CloudFormation stack deletion blocked"
+      ],
+      "common_causes": [
+        "Orphaned security groups",
+        "VPC dependencies",
+        "CloudFormation stack in DELETE_FAILED state"
+      ]
+    },
+    {
+      "type": "cloudformation_deletion_failure",
+      "pattern": ".*cloudformation.*(delete.*fail|rollback).*",
+      "severity": "high",
+      "auto_fix": false,
+      "description": "AWS CloudFormation stack deletion failure",
+      "symptoms": [
+        "Stack in DELETE_FAILED state",
+        "Orphaned AWS resources",
+        "Security group dependencies"
+      ],
+      "common_causes": [
+        "Resources created outside CloudFormation",
+        "Security group dependencies",
+        "ENI attachments not cleaned up"
+      ]
+    },
+    {
+      "type": "ocm_auth_failure",
+      "pattern": ".*(ocm|openshift cluster manager).*(401|403|unauthorized|forbidden).*",
+      "severity": "medium",
+      "auto_fix": true,
+      "description": "OpenShift Cluster Manager authentication failure",
+      "symptoms": [
+        "401/403 HTTP errors from OCM API",
+        "Token expired messages",
+        "Unauthorized access errors"
+      ],
+      "common_causes": [
+        "Expired OCM token",
+        "Invalid client credentials",
+        "Incorrect client ID/secret"
+      ]
+    },
+    {
+      "type": "capi_controller_not_running",
+      "pattern": ".*(capi|cluster.*api).*(not found|does not exist|no.*running).*",
+      "severity": "high",
+      "auto_fix": false,
+      "description": "CAPI/CAPA controllers not installed or running",
+      "symptoms": [
+        "Controller deployments not found",
+        "capi-system namespace missing",
+        "capa-system namespace missing"
+      ],
+      "common_causes": [
+        "CAPI/CAPA not installed",
+        "Controllers crashed",
+        "MCE not properly configured"
+      ]
+    },
+    {
+      "type": "api_rate_limit",
+      "pattern": ".*(rate limit|429|too many requests|throttl).*",
+      "severity": "low",
+      "auto_fix": true,
+      "description": "API rate limiting encountered",
+      "symptoms": [
+        "429 HTTP status codes",
+        "Rate limit exceeded messages",
+        "Throttling errors"
+      ],
+      "common_causes": [
+        "Too many API calls in short period",
+        "AWS API limits",
+        "OCM API limits"
+      ]
+    },
+    {
+      "type": "resource_quota_exceeded",
+      "pattern": ".*(quota|limit).*exceed.*",
+      "severity": "medium",
+      "auto_fix": false,
+      "description": "Resource quota or limit exceeded",
+      "symptoms": [
+        "Quota exceeded errors",
+        "Account limits reached",
+        "VPC limit errors"
+      ],
+      "common_causes": [
+        "AWS account limits",
+        "Too many clusters in region",
+        "VPC/subnet limits"
+      ]
+    },
+    {
+      "type": "networking_configuration_error",
+      "pattern": ".*(subnet|vpc|network).*(invalid|not found|error).*",
+      "severity": "high",
+      "auto_fix": false,
+      "description": "Network configuration error",
+      "symptoms": [
+        "Invalid subnet configurations",
+        "VPC not found",
+        "Network connectivity issues"
+      ],
+      "common_causes": [
+        "Incorrect VPC ID",
+        "Subnets in wrong AZs",
+        "Missing route tables"
+      ]
+    },
+    {
+      "type": "iam_permission_error",
+      "pattern": ".*(iam|permission|access denied|not authorized).*",
+      "severity": "high",
+      "auto_fix": false,
+      "description": "IAM permission or role error",
+      "symptoms": [
+        "Access denied errors",
+        "Missing IAM permissions",
+        "Role assumption failures"
+      ],
+      "common_causes": [
+        "Insufficient AWS permissions",
+        "Missing IAM roles",
+        "Incorrect role trust policies"
+      ]
+    }
+  ]
+}

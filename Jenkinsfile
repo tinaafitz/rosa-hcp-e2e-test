@@ -144,8 +144,8 @@ pipeline {
                                   -e OCM_CLIENT_SECRET="${OCM_CLIENT_SECRET}"
                             '''
                         }
-                        // Archive results from both old and new test systems
-                        archiveArtifacts artifacts: 'rosa-hcp-e2e-test/results/**/*.xml, rosa-hcp-e2e-test/test-results/**/*.xml', allowEmptyArchive: true, followSymlinks: false, fingerprint: true
+                        // Archive results from both old and new test systems, including AI agent logs
+                        archiveArtifacts artifacts: 'rosa-hcp-e2e-test/results/**/*.xml, rosa-hcp-e2e-test/test-results/**/*.xml, rosa-hcp-e2e-test/agents/knowledge_base/intervention_log.json', allowEmptyArchive: true, followSymlinks: false, fingerprint: true
                     }
                     catch (ex) {
                         echo 'CAPI Configuration Tests failed ... Marking build as FAILURE'
@@ -193,8 +193,8 @@ pipeline {
                                   -e name_prefix="${NAME_PREFIX}"
                             '''
                         }
-                        // Archive provisioning test results
-                        archiveArtifacts artifacts: 'rosa-hcp-e2e-test/test-results/**/*.xml, rosa-hcp-e2e-test/test-results/**/*.html, rosa-hcp-e2e-test/test-results/**/*.json', allowEmptyArchive: true, followSymlinks: false, fingerprint: true
+                        // Archive provisioning test results, including AI agent logs
+                        archiveArtifacts artifacts: 'rosa-hcp-e2e-test/test-results/**/*.xml, rosa-hcp-e2e-test/test-results/**/*.html, rosa-hcp-e2e-test/test-results/**/*.json, rosa-hcp-e2e-test/agents/knowledge_base/intervention_log.json', allowEmptyArchive: true, followSymlinks: false, fingerprint: true
                     }
                     catch (ex) {
                         echo 'ROSA HCP Provisioning Tests failed'
@@ -245,8 +245,8 @@ pipeline {
                                 '''
                             }
                         }
-                        // Archive deletion test results
-                        archiveArtifacts artifacts: 'rosa-hcp-e2e-test/test-results/**/*', allowEmptyArchive: true, followSymlinks: false, fingerprint: true
+                        // Archive deletion test results, including AI agent logs
+                        archiveArtifacts artifacts: 'rosa-hcp-e2e-test/test-results/**/*, rosa-hcp-e2e-test/agents/knowledge_base/intervention_log.json', allowEmptyArchive: true, followSymlinks: false, fingerprint: true
                     }
                     catch (ex) {
                         echo 'ROSA HCP Deletion Tests failed or timed out'
@@ -259,8 +259,8 @@ pipeline {
         stage('Archive the CAPI/CAPA Artifacts') {
             steps {
                 script {
-                   // Archive artifacts from both old (results/) and new (test-results/) systems
-                   archiveArtifacts artifacts: 'rosa-hcp-e2e-test/results/**/*.xml, rosa-hcp-e2e-test/test-results/**/*.xml', allowEmptyArchive: true, followSymlinks: false
+                   // Archive artifacts from both old (results/) and new (test-results/) systems, including AI agent logs
+                   archiveArtifacts artifacts: 'rosa-hcp-e2e-test/results/**/*.xml, rosa-hcp-e2e-test/test-results/**/*.xml, rosa-hcp-e2e-test/agents/knowledge_base/intervention_log.json', allowEmptyArchive: true, followSymlinks: false
 
                    // Publish JUnit test results from both systems
                    junit allowEmptyResults: true, testResults: 'rosa-hcp-e2e-test/results/**/*.xml, rosa-hcp-e2e-test/test-results/**/*.xml'

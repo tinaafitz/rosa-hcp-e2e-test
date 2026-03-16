@@ -55,7 +55,7 @@
     },
     {
       "type": "api_rate_limit",
-      "pattern": ".*(rate limit|429|too many requests|throttl).*",
+      "pattern": "^(?!.*(?:Pattern matched|Issue detected|Fix applied|Monitor|Remediation)).*(?:HTTP.*429|rate.limit.exceed|throttl.*request|too.many.requests.*api).*",
       "severity": "low",
       "auto_fix": true,
       "description": "API rate limiting encountered",

@@ -88,6 +88,25 @@
       ]
     },
     {
+      "type": "rosanetwork_stuck_deletion",
+      "pattern": ".*(rosanetwork|ROSANetwork).*(RETRYING|retries left|still exists|waiting.*delet|deletion.*timeout|stuck.*delet|fail.*delet).*",
+      "severity": "high",
+      "auto_fix": true,
+      "description": "ROSANetwork stuck in deletion state due to finalizers or VPC dependencies",
+      "symptoms": [
+        "ROSANetwork has deletionTimestamp but won't delete",
+        "Ansible retrying ROSANetwork deletion continuously",
+        "Finalizers preventing resource deletion",
+        "VPC or CloudFormation stack still exists"
+      ],
+      "common_causes": [
+        "Finalizers blocking deletion",
+        "Underlying CloudFormation stack stuck",
+        "VPC has orphaned dependencies",
+        "Controller unable to clean up resources"
+      ]
+    },
+    {
       "type": "vpc_deletion_failure",
       "pattern": ".*vpc.*(has dependencies|cannot be deleted|delete.*fail|DELETE_FAILED).*",
       "severity": "high",

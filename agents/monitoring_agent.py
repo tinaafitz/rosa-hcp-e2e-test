@@ -11,6 +11,7 @@ Author: Tina Fitzgerald
 Created: March 3, 2026
 """
 
+import time
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
@@ -34,6 +35,11 @@ class MonitoringAgent(BaseAgent):
         self.current_task = None
         self.waiting_for_resource = None
         self.timeout_warnings = 0
+
+        # Debounce: track last issue type and time to avoid spamming
+        self._last_issue_type = None
+        self._last_issue_time = 0
+        self._issue_debounce_seconds = 30  # Minimum seconds between same issue type
 
     def set_issue_callback(self, callback: Callable):
         """
@@ -72,11 +78,19 @@ class MonitoringAgent(BaseAgent):
             self.log(f"Issue detected: {issue['type']}", "warning")
             self.patterns_detected.append(issue)
 
-            # Trigger intervention if callback is set
+            # Trigger intervention if callback is set (with debounce)
             if self.issue_callback and self.should_intervene(issue):
+                now = time.time()
+                if issue['type'] == self._last_issue_type and (now - self._last_issue_time) < self._issue_debounce_seconds:
+                    # Skip — same issue type fired too recently
+                    return False
+
+                self._last_issue_type = issue['type']
+                self._last_issue_time = now
+
                 context = {
                     "line": line,
-                    "buffer": self.line_buffer[-10:],  # Last 10 lines
+                    "buffer": self.line_buffer[-30:],  # Last 30 lines for better extraction
                     "current_task": self.current_task,
                     "waiting_for": self.waiting_for_resource,
                 }
@@ -215,4 +229,6 @@ class MonitoringAgent(BaseAgent):
         self.current_task = None
         self.waiting_for_resource = None
         self.timeout_warnings = 0
+        self._last_issue_type = None
+        self._last_issue_time = 0
         self.log("Monitoring state reset", "debug")

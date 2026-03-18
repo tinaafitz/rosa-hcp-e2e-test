@@ -271,35 +271,18 @@ class DiagnosticAgent(BaseAgent):
         if "namespace" in context:
             namespace = context["namespace"]
 
-        # If not explicit, try to extract from current task
-        current_task = context.get("current_task", "")
-        if current_task and resource_name == "unknown-cluster":
-            # Pattern: "Wait for ROSANetwork <name> deletion"
-            task_match = re.search(r'ROSANetwork\s+(\S+)', current_task, re.IGNORECASE)
-            if task_match:
-                resource_name = task_match.group(1)
-                self.log(f"Extracted from task: {resource_name}", "debug")
-
-        # Try to extract from buffer (command output)
+        # Try to extract from buffer FIRST (most reliable - has actual oc/kubectl commands)
         buffer = context.get("buffer", [])
         for line in buffer:
             # Pattern: "oc get rosanetwork <name> -n <namespace>"
-            oc_match = re.search(r'oc\s+get\s+rosanetwork\s+(\S+)\s+-n\s+(\S+)', line, re.IGNORECASE)
+            oc_match = re.search(r'(?:oc|kubectl)\s+(?:get|patch)\s+rosanetwork\s+(\S+)\s+-n\s+(\S+)', line, re.IGNORECASE)
             if oc_match:
                 resource_name = oc_match.group(1)
                 namespace = oc_match.group(2)
                 self.log(f"Extracted from oc command: {resource_name} in namespace {namespace}", "debug")
                 break
 
-            # Pattern: "kubectl get rosanetwork <name> -n <namespace>"
-            kubectl_match = re.search(r'kubectl\s+get\s+rosanetwork\s+(\S+)\s+-n\s+(\S+)', line, re.IGNORECASE)
-            if kubectl_match:
-                resource_name = kubectl_match.group(1)
-                namespace = kubectl_match.group(2)
-                self.log(f"Extracted from kubectl command: {resource_name} in namespace {namespace}", "debug")
-                break
-
-            # Pattern: Output table "NAME                   AGE\\npop-rosa-hcp-network   76m"
+            # Pattern: Output table "NAME                   AGE\npop-rosa-hcp-network   76m"
             if "NAME" in line and "AGE" in line:
                 buffer_idx = buffer.index(line)
                 if buffer_idx + 1 < len(buffer):
@@ -308,6 +291,19 @@ class DiagnosticAgent(BaseAgent):
                     if parts and resource_name == "unknown-cluster":
                         resource_name = parts[0]
                         self.log(f"Extracted from output table: {resource_name}", "debug")
+
+        # Fallback: try to extract from current task name (less reliable)
+        # Only use words that look like resource names (contain hyphens), skip generic
+        # words like "deletion", "complete", "stuck" etc.
+        current_task = context.get("current_task", "")
+        skip_words = {"deletion", "delete", "complete", "stuck", "if", "to", "for", "the", "in"}
+        if current_task and resource_name == "unknown-cluster":
+            task_match = re.search(r'ROSANetwork\s+(\S+)', current_task, re.IGNORECASE)
+            if task_match:
+                candidate = task_match.group(1)
+                if candidate.lower() not in skip_words and '-' in candidate:
+                    resource_name = candidate
+                    self.log(f"Extracted from task: {resource_name}", "debug")
 
         # Log what we found
         if resource_name == "unknown-cluster":

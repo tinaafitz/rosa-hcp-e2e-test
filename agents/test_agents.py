@@ -256,6 +256,34 @@ def test_remediation_no_crash_on_success():
     print("PASSED")
 
 
+def test_callback_receives_resource_key():
+    """Test that the issue callback receives resource_key for state machine feedback"""
+    print("\n=== Test 15: Callback receives resource_key ===")
+    monitor = MonitoringAgent(Path("."), enabled=True, verbose=True)
+
+    captured_context = {}
+    def mock_callback(issue_type, context, issue):
+        captured_context.update(context)
+
+    monitor.set_issue_callback(mock_callback)
+
+    # Feed structured context then a matching line
+    monitor.process_line("#AGENT_CONTEXT: resource_name=my-cluster namespace=my-ns resource_type=rosanetwork")
+    monitor.process_line("FAILED - RETRYING: ROSANetwork my-cluster still exists waiting for deletion (30 retries left)")
+
+    assert "resource_key" in captured_context, "Callback context missing resource_key"
+    assert captured_context["resource_key"] == "my-ns/my-cluster", \
+        f"Expected 'my-ns/my-cluster', got '{captured_context['resource_key']}'"
+
+    # Verify mark_issue_resolved works with the captured key
+    monitor.mark_issue_resolved("rosanetwork_stuck_deletion", captured_context["resource_key"])
+    tracking_key = f"rosanetwork_stuck_deletion:{captured_context['resource_key']}"
+    tracked = monitor._tracked_issues.get(tracking_key)
+    assert tracked is not None, f"Tracked issue not found for key {tracking_key}"
+    assert tracked.state.value == "resolved", f"Expected 'resolved', got '{tracked.state.value}'"
+    print("PASSED")
+
+
 def main():
     """Run all tests"""
     print("=" * 70)
@@ -277,6 +305,7 @@ def main():
         test_structured_context_cleared_on_new_task,
         test_extract_resource_type_parameter,
         test_remediation_no_crash_on_success,
+        test_callback_receives_resource_key,
     ]
 
     passed = 0

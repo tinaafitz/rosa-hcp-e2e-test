@@ -214,7 +214,7 @@ class RemediationAgent(BaseAgent):
                             ]
                             detach_result = subprocess.run(detach_cmd, capture_output=True, text=True, timeout=30)
                             if detach_result.returncode == 0:
-                                outputs.append(f"  ✓ Detached ENI {eni_id}")
+                                outputs.append(f"  Detached ENI {eni_id}")
                                 time.sleep(2)  # Wait for detachment
 
                         # Delete ENI if available
@@ -226,10 +226,10 @@ class RemediationAgent(BaseAgent):
                             ]
                             delete_result = subprocess.run(delete_cmd, capture_output=True, text=True, timeout=30)
                             if delete_result.returncode == 0:
-                                outputs.append(f"  ✓ Deleted ENI {eni_id}")
+                                outputs.append(f"  Deleted ENI {eni_id}")
                                 cleanup_count += 1
                             else:
-                                outputs.append(f"  ✗ Failed to delete ENI {eni_id}: {delete_result.stderr}")
+                                outputs.append(f"  FAILED to delete ENI {eni_id}: {delete_result.stderr}")
             else:
                 outputs.append("No orphaned ENIs found")
 
@@ -272,15 +272,15 @@ class RemediationAgent(BaseAgent):
 
                         delete_sg_result = subprocess.run(delete_sg_cmd, capture_output=True, text=True, timeout=30)
                         if delete_sg_result.returncode == 0:
-                            outputs.append(f"  ✓ Deleted security group {sg_id} ({sg_name})")
+                            outputs.append(f"  Deleted security group {sg_id} ({sg_name})")
                             sg_cleanup_count += 1
                         else:
                             # Security group might have dependencies, log but continue
                             error_msg = delete_sg_result.stderr.strip()
                             if "DependencyViolation" in error_msg:
-                                outputs.append(f"  ⚠ Security group {sg_id} ({sg_name}) has dependencies, will be cleaned by CloudFormation")
+                                outputs.append(f"  SKIPPED security group {sg_id} ({sg_name}) has dependencies, will be cleaned by CloudFormation")
                             else:
-                                outputs.append(f"  ✗ Failed to delete security group {sg_id}: {error_msg}")
+                                outputs.append(f"  FAILED to delete security group {sg_id}: {error_msg}")
                 else:
                     outputs.append("No security groups found matching criteria")
             else:
@@ -305,7 +305,7 @@ class RemediationAgent(BaseAgent):
         message = params.get("message", "CloudFormation stack requires manual inspection")
 
         # Log the issue prominently for operator attention
-        self.log(f"⚠️  MANUAL INTERVENTION REQUIRED: {message}", "warning")
+        self.log(f"MANUAL INTERVENTION REQUIRED: {message}", "warning")
 
         # Continue test execution but flag for review
         return True, f"Logged for manual review: {message}"

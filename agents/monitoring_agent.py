@@ -83,7 +83,16 @@ class MonitoringAgent(BaseAgent):
         self._structured_context: Dict[str, str] = {}
 
     def set_issue_callback(self, callback: Callable):
-        """Set callback function to be called when issues are detected."""
+        """Set callback function to be called when issues are detected.
+
+        The callback signature must be:
+            callback(issue_type: str, context: Dict, issue: Dict) -> None
+
+        The context dict will include a ``resource_key`` field that uniquely
+        identifies the resource this issue relates to.  Pass it back to
+        ``mark_issue_resolved`` / ``mark_issue_failed`` so the state machine
+        resolves the correct tracked issue.
+        """
         self.issue_callback = callback
         self.log("Issue callback registered", "debug")
 
@@ -155,6 +164,7 @@ class MonitoringAgent(BaseAgent):
             "buffer": self.line_buffer[-30:],
             "current_task": self.current_task,
             "waiting_for": self.waiting_for_resource,
+            "resource_key": resource_key,
         }
 
         # Merge structured context if available

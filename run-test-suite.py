@@ -121,6 +121,10 @@ class TestSuiteRunner:
         Orchestrates the diagnostic and remediation chain, and feeds
         results back to the monitor's per-resource state machine.
         """
+        # Capture resource_key now so we resolve the correct tracked issue
+        # even if structured context changes before we call back.
+        resource_key = context.get("resource_key")
+
         try:
             print(f"\n{Colors.YELLOW}AI Agent detected issue: {issue_type}{Colors.ENDC}")
 
@@ -138,21 +142,21 @@ class TestSuiteRunner:
 
                     if success:
                         print(f"{Colors.GREEN}   Fix applied: {message}{Colors.ENDC}\n")
-                        self.monitor_agent.mark_issue_resolved(issue_type)
+                        self.monitor_agent.mark_issue_resolved(issue_type, resource_key)
                     else:
                         print(f"{Colors.YELLOW}   Fix result: {message}{Colors.ENDC}\n")
-                        self.monitor_agent.mark_issue_failed(issue_type)
+                        self.monitor_agent.mark_issue_failed(issue_type, resource_key)
                 else:
                     print(f"{Colors.YELLOW}   Confidence too low for auto-remediation{Colors.ENDC}\n")
-                    self.monitor_agent.mark_issue_failed(issue_type)
+                    self.monitor_agent.mark_issue_failed(issue_type, resource_key)
             else:
                 print(f"{Colors.YELLOW}   Unable to diagnose issue{Colors.ENDC}\n")
-                self.monitor_agent.mark_issue_failed(issue_type)
+                self.monitor_agent.mark_issue_failed(issue_type, resource_key)
 
         except Exception as e:
             # Don't let agent errors break execution
             print(f"{Colors.YELLOW}   AI Agent error: {str(e)}{Colors.ENDC}\n")
-            self.monitor_agent.mark_issue_failed(issue_type)
+            self.monitor_agent.mark_issue_failed(issue_type, resource_key)
 
     def load_test_suite(self, suite_id: str) -> Optional[Dict]:
         """Load test suite JSON from file."""

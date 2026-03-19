@@ -24,7 +24,9 @@ from .base_agent import BaseAgent
 
 # Structured context marker emitted by Ansible playbooks.
 # Format: #AGENT_CONTEXT: key1=value1 key2=value2
-AGENT_CONTEXT_PATTERN = re.compile(r'^#AGENT_CONTEXT:\s+(.+)$')
+# May appear bare or inside Ansible debug output like:
+#   "msg": "#AGENT_CONTEXT: resource_name=foo namespace=bar"
+AGENT_CONTEXT_PATTERN = re.compile(r'#AGENT_CONTEXT:\s+(.+?)(?:"|$)')
 
 
 class IssueState(Enum):
@@ -220,13 +222,16 @@ class MonitoringAgent(BaseAgent):
 
         Format: #AGENT_CONTEXT: resource_name=my-cluster namespace=my-ns resource_type=rosanetwork
         """
-        match = AGENT_CONTEXT_PATTERN.match(line.strip())
+        match = AGENT_CONTEXT_PATTERN.search(line.strip())
         if match:
             pairs = match.group(1)
             for pair in pairs.split():
                 if '=' in pair:
                     key, value = pair.split('=', 1)
                     self._structured_context[key] = value
+            # Preserve this context across the next TASK boundary so the
+            # immediately following wait task can use it.
+            self._structured_context["_preserve_for_next_task"] = True
             self.log(f"Structured context: {self._structured_context}", "debug")
 
     def _update_execution_context(self, line: str):
@@ -236,8 +241,15 @@ class MonitoringAgent(BaseAgent):
             if task_match:
                 self.current_task = task_match
                 # Clear structured context from previous task so stale
-                # values don't leak into a new task's issue handling
-                self._structured_context.clear()
+                # values don't leak into a new task's issue handling.
+                # But preserve context if the previous task was an
+                # agent context emitter (the context is meant for the
+                # immediately following task).
+                if not self._structured_context.get("_preserve_for_next_task"):
+                    self._structured_context.clear()
+                else:
+                    # Consumed — don't preserve again
+                    self._structured_context.pop("_preserve_for_next_task", None)
                 self.update_context("current_task", task_match)
                 self.log(f"Current task: {task_match}", "debug")
 

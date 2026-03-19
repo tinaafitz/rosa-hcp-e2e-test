@@ -24,7 +24,9 @@ from .base_agent import BaseAgent
 
 # Structured context marker emitted by Ansible playbooks.
 # Format: #AGENT_CONTEXT: key1=value1 key2=value2
-AGENT_CONTEXT_PATTERN = re.compile(r'^#AGENT_CONTEXT:\s+(.+)$')
+# May appear bare or inside Ansible debug output like:
+#   "msg": "#AGENT_CONTEXT: resource_name=foo namespace=bar"
+AGENT_CONTEXT_PATTERN = re.compile(r'#AGENT_CONTEXT:\s+(.+?)(?:"|$)')
 
 
 class IssueState(Enum):
@@ -220,7 +222,7 @@ class MonitoringAgent(BaseAgent):
 
         Format: #AGENT_CONTEXT: resource_name=my-cluster namespace=my-ns resource_type=rosanetwork
         """
-        match = AGENT_CONTEXT_PATTERN.match(line.strip())
+        match = AGENT_CONTEXT_PATTERN.search(line.strip())
         if match:
             pairs = match.group(1)
             for pair in pairs.split():

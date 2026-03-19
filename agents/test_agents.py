@@ -185,12 +185,20 @@ def test_structured_context_marker():
     print("\n=== Test 10: Structured context marker ===")
     monitor = MonitoringAgent(Path("."), enabled=True, verbose=True)
 
-    # Simulate structured context marker
+    # Simulate structured context marker (bare format)
     monitor.process_line("#AGENT_CONTEXT: resource_name=my-rosa-network namespace=ns-rosa-hcp resource_type=rosanetwork")
 
     assert monitor._structured_context.get("resource_name") == "my-rosa-network"
     assert monitor._structured_context.get("namespace") == "ns-rosa-hcp"
     assert monitor._structured_context.get("resource_type") == "rosanetwork"
+
+    # Also test Ansible debug output format (wrapped in JSON)
+    monitor._structured_context.clear()
+    monitor.process_line('    "msg": "#AGENT_CONTEXT: resource_name=bar-rosa-hcp-network namespace=ns-rosa-hcp resource_type=rosanetwork"')
+
+    assert monitor._structured_context.get("resource_name") == "bar-rosa-hcp-network", \
+        f"Expected 'bar-rosa-hcp-network', got '{monitor._structured_context.get('resource_name')}'"
+    assert monitor._structured_context.get("namespace") == "ns-rosa-hcp"
     print("PASSED")
 
 

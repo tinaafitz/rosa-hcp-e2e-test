@@ -127,7 +127,7 @@ spec:
   defaultMachinePoolSpec:
     instanceType: {{ machine_pool.instance_type | default('m5.xlarge') }}
     autoscaling:
-      maxReplicas: {{ machine_pool.max_replicas | default(4) }}
+      maxReplicas: {{ machine_pool.max_replicas | default(2) }}
       minReplicas: {{ machine_pool.min_replicas | default(2) }}
 
   additionalTags:

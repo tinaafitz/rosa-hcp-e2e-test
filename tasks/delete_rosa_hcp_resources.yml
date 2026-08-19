@@ -368,7 +368,7 @@
             VPCE_IDS=$(echo $VPCE_IDS)  # normalize tab-separated output to spaces
             if [ -n "$VPCE_IDS" ]; then
               echo "Deleting VPC endpoints: $VPCE_IDS" | tee -a "$LOGFILE"
-              aws ec2 delete-vpc-endpoints --region "$REGION" --vpc-endpoint-ids $VPCE_IDS 2>&1 | tee -a "$LOGFILE" || { CLEANUP_ERRORS=$((CLEANUP_ERRORS + 1)); true; }
+              aws ec2 delete-vpc-endpoints --region "$REGION" --vpc-endpoint-ids $VPCE_IDS 2>&1 | tee -a "$LOGFILE" || CLEANUP_ERRORS=$((CLEANUP_ERRORS + 1))
               sleep 20
             fi
 
@@ -384,10 +384,10 @@
                 --query 'NetworkInterfaces[0].Attachment.AttachmentId' --output text 2>/dev/null)
               if [ -n "$ATTACH_ID" ] && [ "$ATTACH_ID" != "None" ]; then
                 aws ec2 detach-network-interface --region "$REGION" \
-                  --attachment-id "$ATTACH_ID" --force 2>&1 | tee -a "$LOGFILE" || { CLEANUP_ERRORS=$((CLEANUP_ERRORS + 1)); true; }
+                  --attachment-id "$ATTACH_ID" --force 2>&1 | tee -a "$LOGFILE" || CLEANUP_ERRORS=$((CLEANUP_ERRORS + 1))
                 sleep 5
               fi
-              aws ec2 delete-network-interface --region "$REGION" --network-interface-id "$ENI_ID" 2>&1 | tee -a "$LOGFILE" || { CLEANUP_ERRORS=$((CLEANUP_ERRORS + 1)); true; }
+              aws ec2 delete-network-interface --region "$REGION" --network-interface-id "$ENI_ID" 2>&1 | tee -a "$LOGFILE" || CLEANUP_ERRORS=$((CLEANUP_ERRORS + 1))
             done
 
             # Delete non-default security groups
@@ -396,7 +396,7 @@
               --filters "Name=vpc-id,Values=$VPC_ID" \
               --query 'SecurityGroups[?GroupName!=`default`].GroupId' --output text 2>/dev/null)
             for SG_ID in $SG_IDS; do
-              aws ec2 delete-security-group --region "$REGION" --group-id "$SG_ID" 2>&1 | tee -a "$LOGFILE" || { CLEANUP_ERRORS=$((CLEANUP_ERRORS + 1)); true; }
+              aws ec2 delete-security-group --region "$REGION" --group-id "$SG_ID" 2>&1 | tee -a "$LOGFILE" || CLEANUP_ERRORS=$((CLEANUP_ERRORS + 1))
             done
 
             # Log summary of VPC cleanup results

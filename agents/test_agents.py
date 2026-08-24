@@ -835,6 +835,22 @@ def test_stale_line_not_misattributed():
     print("PASSED")
 
 
+def _extract_shell_cmd(task: dict) -> str:
+    """Return the shell command string of an Ansible task regardless of form.
+
+    Handles: bare `shell: "..."`, `shell: {cmd: "..."}`, and the FQCN
+    `ansible.builtin.shell:` variant of either. Returns "" if the task is
+    not a shell task.
+    """
+    for key in ("shell", "ansible.builtin.shell"):
+        val = task.get(key)
+        if isinstance(val, str):
+            return val
+        if isinstance(val, dict):
+            return val.get("cmd", "") or ""
+    return ""
+
+
 def test_shell_loop_task_file_has_streaming_output():
     """Test 30: Deletion task file uses shell loops with echo for real-time streaming.
 
@@ -854,7 +870,11 @@ def test_shell_loop_task_file_has_streaming_output():
         assert len(wait_tasks) == 1, f"Expected 1 task named '{wait_task_name}', found {len(wait_tasks)}"
 
         wait_t = wait_tasks[0]
-        shell_cmd = wait_t.get("shell", "")
+        # The shell command may be expressed in any of the accepted Ansible
+        # forms: a bare `shell: |` string, or the module with a nested `cmd`
+        # (either the short `shell:` key or the FQCN `ansible.builtin.shell:`),
+        # where the value is itself a dict {cmd: ...}. Normalize all of them.
+        shell_cmd = _extract_shell_cmd(wait_t)
 
         # Must use shell for-loop, not Ansible until/retries
         assert "until" not in wait_t, \

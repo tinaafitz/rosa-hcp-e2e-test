@@ -204,6 +204,23 @@ def test_structured_context_marker():
     assert monitor._structured_context.get("resource_name") == "bar-rosa-hcp-network", \
         f"Expected 'bar-rosa-hcp-network', got '{monitor._structured_context.get('resource_name')}'"
     assert monitor._structured_context.get("namespace") == "ns-rosa-hcp"
+
+    # Regression: a single Ansible result line carries the marker TWICE —
+    # first in the unexpanded `cmd` field (with shell placeholders like
+    # $NETWORK_NAME and a trailing "\n" continuation backslash), then again
+    # in the expanded `stdout`. We must take the LAST (expanded) occurrence
+    # and strip escape/quote artifacts so downstream exact-match logic works.
+    monitor._structured_context.clear()
+    monitor.process_line(
+        '{"cmd": "echo #AGENT_CONTEXT: resource_name=$NETWORK_NAME '
+        'resource_type=rosanetwork\\n", '
+        '"stdout": "#AGENT_CONTEXT: resource_name=jnk-rosa-hcp-network '
+        'resource_type=rosanetwork"}'
+    )
+    assert monitor._structured_context.get("resource_type") == "rosanetwork", \
+        f"resource_type carried an escape artifact: '{monitor._structured_context.get('resource_type')}'"
+    assert monitor._structured_context.get("resource_name") == "jnk-rosa-hcp-network", \
+        f"Expected expanded name, got '{monitor._structured_context.get('resource_name')}'"
     print("PASSED")
 
 

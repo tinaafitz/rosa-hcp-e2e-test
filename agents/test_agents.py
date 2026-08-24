@@ -221,6 +221,21 @@ def test_structured_context_marker():
         f"resource_type carried an escape artifact: '{monitor._structured_context.get('resource_type')}'"
     assert monitor._structured_context.get("resource_name") == "jnk-rosa-hcp-network", \
         f"Expected expanded name, got '{monitor._structured_context.get('resource_name')}'"
+
+    # Robustness: even if the expanded marker appears BEFORE the unexpanded
+    # $-placeholder one (field order in an Ansible result dict is not
+    # guaranteed), the $-placeholder skip must still keep the real value.
+    # Parsing therefore does not depend on cmd-before-stdout ordering.
+    monitor._structured_context.clear()
+    monitor.process_line(
+        '{"stdout": "#AGENT_CONTEXT: resource_name=jnk-rosa-hcp-network '
+        'resource_type=rosanetwork", '
+        '"cmd": "echo #AGENT_CONTEXT: resource_name=$NETWORK_NAME '
+        'resource_type=rosanetwork\\n"}'
+    )
+    assert monitor._structured_context.get("resource_name") == "jnk-rosa-hcp-network", \
+        f"$-placeholder poisoned the value on reversed order: '{monitor._structured_context.get('resource_name')}'"
+    assert monitor._structured_context.get("resource_type") == "rosanetwork"
     print("PASSED")
 
 

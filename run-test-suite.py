@@ -845,10 +845,17 @@ class TestSuiteRunner:
         total_failures = sum(1 for p in all_playbooks if not p['success'] and not p.get('is_error'))
         total_skipped = sum(1 for p in all_playbooks if p.get('skipped'))
 
+        # Derive the test count from the playbooks actually reported here, not
+        # from self.results['total_tests'] — that counter is overwritten per
+        # suite (run_test_suite sets it to len(playbooks) of the last suite),
+        # so on a multi-suite run it would disagree with the failures/errors
+        # totals summed across all suites and produce an inconsistent header.
+        total_tests = len(all_playbooks)
+
         # Create root testsuites element
         testsuites = ET.Element('testsuites')
         testsuites.set('name', 'ROSA HCP Test Suite')
-        testsuites.set('tests', str(self.results['total_tests']))
+        testsuites.set('tests', str(total_tests))
         testsuites.set('failures', str(total_failures))
         testsuites.set('errors', str(total_errors))
         testsuites.set('skipped', str(total_skipped))

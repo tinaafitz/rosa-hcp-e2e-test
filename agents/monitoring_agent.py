@@ -259,17 +259,40 @@ class MonitoringAgent(BaseAgent):
 
         Format: #AGENT_CONTEXT: resource_name=my-cluster namespace=my-ns resource_type=rosanetwork
         """
-        match = AGENT_CONTEXT_PATTERN.search(line.strip())
-        if match:
-            pairs = match.group(1)
-            for pair in pairs.split():
-                if '=' in pair:
-                    key, value = pair.split('=', 1)
-                    self._structured_context[key] = value
-            # Preserve this context across the next TASK boundary so the
-            # immediately following wait task can use it.
-            self._structured_context["_preserve_for_next_task"] = True
-            self.log(f"Structured context: {self._structured_context}", "debug")
+        # A single Ansible result line can contain the marker more than once:
+        # the unexpanded `cmd` field (e.g. resource_name=$NETWORK_NAME with a
+        # trailing "\n" continuation) and the expanded `stdout`/`stdout_lines`
+        # with real values. Field order within the serialized result is NOT
+        # guaranteed, so we can't just take the last occurrence — the expanded
+        # marker may come before or after the placeholder one. Instead, parse
+        # EVERY marker and let real values win: a $-placeholder never overwrites
+        # a value already set from an expanded marker on the same line.
+        matches = list(AGENT_CONTEXT_PATTERN.finditer(line.strip()))
+        if not matches:
+            return
+        for match in matches:
+            for pair in match.group(1).split():
+                if '=' not in pair:
+                    continue
+                key, value = pair.split('=', 1)
+                # Values matched from the JSON-serialized `cmd` field can carry
+                # trailing escape artifacts — a literal "\n"/"\r"/"\t" line
+                # continuation (backslash + letter, not a real newline) or a
+                # lone trailing backslash — plus surrounding quotes. Strip them
+                # so downstream exact-match logic (resource_type == "rosanetwork")
+                # is reliable.
+                value = value.strip()
+                value = re.sub(r'\\[nrt]$', '', value)  # literal \n \r \t suffix
+                value = value.rstrip('\\').strip('"\'')
+                # Never let an unexpanded shell placeholder ($NETWORK_NAME) or an
+                # empty value clobber a real one — regardless of marker order.
+                if not value or value.startswith('$'):
+                    continue
+                self._structured_context[key] = value
+        # Preserve this context across the next TASK boundary so the
+        # immediately following wait task can use it.
+        self._structured_context["_preserve_for_next_task"] = True
+        self.log(f"Structured context: {self._structured_context}", "debug")
 
     def _update_execution_context(self, line: str):
         """Extract execution context from output line."""

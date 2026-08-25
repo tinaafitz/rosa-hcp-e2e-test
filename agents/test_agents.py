@@ -204,6 +204,38 @@ def test_structured_context_marker():
     assert monitor._structured_context.get("resource_name") == "bar-rosa-hcp-network", \
         f"Expected 'bar-rosa-hcp-network', got '{monitor._structured_context.get('resource_name')}'"
     assert monitor._structured_context.get("namespace") == "ns-rosa-hcp"
+
+    # Regression: a single Ansible result line carries the marker TWICE —
+    # first in the unexpanded `cmd` field (with shell placeholders like
+    # $NETWORK_NAME and a trailing "\n" continuation backslash), then again
+    # in the expanded `stdout`. We must take the LAST (expanded) occurrence
+    # and strip escape/quote artifacts so downstream exact-match logic works.
+    monitor._structured_context.clear()
+    monitor.process_line(
+        '{"cmd": "echo #AGENT_CONTEXT: resource_name=$NETWORK_NAME '
+        'resource_type=rosanetwork\\n", '
+        '"stdout": "#AGENT_CONTEXT: resource_name=jnk-rosa-hcp-network '
+        'resource_type=rosanetwork"}'
+    )
+    assert monitor._structured_context.get("resource_type") == "rosanetwork", \
+        f"resource_type carried an escape artifact: '{monitor._structured_context.get('resource_type')}'"
+    assert monitor._structured_context.get("resource_name") == "jnk-rosa-hcp-network", \
+        f"Expected expanded name, got '{monitor._structured_context.get('resource_name')}'"
+
+    # Robustness: even if the expanded marker appears BEFORE the unexpanded
+    # $-placeholder one (field order in an Ansible result dict is not
+    # guaranteed), the $-placeholder skip must still keep the real value.
+    # Parsing therefore does not depend on cmd-before-stdout ordering.
+    monitor._structured_context.clear()
+    monitor.process_line(
+        '{"stdout": "#AGENT_CONTEXT: resource_name=jnk-rosa-hcp-network '
+        'resource_type=rosanetwork", '
+        '"cmd": "echo #AGENT_CONTEXT: resource_name=$NETWORK_NAME '
+        'resource_type=rosanetwork\\n"}'
+    )
+    assert monitor._structured_context.get("resource_name") == "jnk-rosa-hcp-network", \
+        f"$-placeholder poisoned the value on reversed order: '{monitor._structured_context.get('resource_name')}'"
+    assert monitor._structured_context.get("resource_type") == "rosanetwork"
     print("PASSED")
 
 
@@ -803,6 +835,22 @@ def test_stale_line_not_misattributed():
     print("PASSED")
 
 
+def _extract_shell_cmd(task: dict) -> str:
+    """Return the shell command string of an Ansible task regardless of form.
+
+    Handles: bare `shell: "..."`, `shell: {cmd: "..."}`, and the FQCN
+    `ansible.builtin.shell:` variant of either. Returns "" if the task is
+    not a shell task.
+    """
+    for key in ("shell", "ansible.builtin.shell"):
+        val = task.get(key)
+        if isinstance(val, str):
+            return val
+        if isinstance(val, dict):
+            return val.get("cmd", "") or ""
+    return ""
+
+
 def test_shell_loop_task_file_has_streaming_output():
     """Test 30: Deletion task file uses shell loops with echo for real-time streaming.
 
@@ -822,7 +870,11 @@ def test_shell_loop_task_file_has_streaming_output():
         assert len(wait_tasks) == 1, f"Expected 1 task named '{wait_task_name}', found {len(wait_tasks)}"
 
         wait_t = wait_tasks[0]
-        shell_cmd = wait_t.get("shell", "")
+        # The shell command may be expressed in any of the accepted Ansible
+        # forms: a bare `shell: |` string, or the module with a nested `cmd`
+        # (either the short `shell:` key or the FQCN `ansible.builtin.shell:`),
+        # where the value is itself a dict {cmd: ...}. Normalize all of them.
+        shell_cmd = _extract_shell_cmd(wait_t)
 
         # Must use shell for-loop, not Ansible until/retries
         assert "until" not in wait_t, \

@@ -277,6 +277,53 @@ class AWSClient:
             return False, f"Failed to delete VPC endpoints: {e}"
 
     # ================================================================
+    # ELBv2 — Load Balancers
+    # ================================================================
+
+    def describe_load_balancers(self, vpc_id: str) -> List[Dict]:
+        """List ELBv2 (ALB/NLB) load balancers in a VPC.
+
+        Service-managed load balancers (e.g. an openshift-ingress
+        router-default NLB) own ela-attach ENIs that cannot be manually
+        detached. Those ENIs are only released once the load balancer is
+        deleted, so callers must delete these before ENI cleanup.
+
+        Returns list of dicts with keys: arn, name, type
+        """
+        if not self.available:
+            return []
+
+        try:
+            elbv2 = self._client("elbv2")
+            results = []
+            paginator = elbv2.get_paginator("describe_load_balancers")
+            for page in paginator.paginate():
+                for lb in page.get("LoadBalancers", []):
+                    if lb.get("VpcId") == vpc_id:
+                        results.append({
+                            "arn": lb["LoadBalancerArn"],
+                            "name": lb.get("LoadBalancerName", ""),
+                            "type": lb.get("Type", "unknown")
+                        })
+            return results
+        except Exception as e:
+            self._log(f"describe-load-balancers error: {e}", "debug")
+
+        return []
+
+    def delete_load_balancer(self, lb_arn: str) -> Tuple[bool, str]:
+        """Delete an ELBv2 load balancer."""
+        if not self.available:
+            return False, "No AWS access available"
+
+        try:
+            elbv2 = self._client("elbv2")
+            elbv2.delete_load_balancer(LoadBalancerArn=lb_arn)
+            return True, f"Deleted load balancer {lb_arn}"
+        except Exception as e:
+            return False, f"Failed to delete load balancer {lb_arn}: {e}"
+
+    # ================================================================
     # EC2 — Subnets
     # ================================================================
 

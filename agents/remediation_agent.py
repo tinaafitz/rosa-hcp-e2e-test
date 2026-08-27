@@ -291,11 +291,32 @@ class RemediationAgent(BaseAgent):
 
             cleanup_details = []
             cleanup_errors = []
+            lb_cleanup_count = 0
 
             vpc_id = aws.get_vpc_from_stack(stack_name)
 
             if vpc_id:
                 self.log(f"Cleaning up VPC {vpc_id} dependencies before retry", "info")
+
+                # Delete leaked load balancers FIRST — a leaked
+                # openshift-ingress router-default NLB owns service-managed
+                # ela-attach ENIs that cannot be force-detached
+                # (OperationNotPermitted). Those ENIs are only released once
+                # the load balancer is deleted, so LBs must go before the
+                # VPC-endpoint/ENI cleanup below.
+                load_balancers = aws.describe_load_balancers(vpc_id)
+                if load_balancers:
+                    self.log(f"Deleting {len(load_balancers)} load balancer(s)", "info")
+                    for lb in load_balancers:
+                        ok, msg = aws.delete_load_balancer(lb["arn"])
+                        if ok:
+                            lb_cleanup_count += 1
+                            cleanup_details.append(f"Deleted load balancer {lb['name']} ({lb['type']})")
+                            self.log(f"Deleted leaked load balancer {lb['name']} ({lb['type']})", "info")
+                        else:
+                            cleanup_errors.append(f"Failed to delete load balancer {lb['arn']}: {msg}")
+                    self.log("Waiting 30s for service-managed ENIs to release after load balancer deletion", "info")
+                    time.sleep(30)
 
                 # Delete VPC endpoints FIRST — they create ela-attach ENIs
                 # that cannot be manually detached
@@ -369,7 +390,10 @@ class RemediationAgent(BaseAgent):
                     return False, f"Stack {stack_name} re-entered DELETE_FAILED — dependencies may still exist"
 
             cleanup_summary = f"; {'; '.join(cleanup_details)}" if cleanup_details else ""
-            return True, f"Cleaned up VPC dependencies for {stack_name}{cleanup_summary}"
+            return True, (
+                f"Cleaned up VPC dependencies for {stack_name} "
+                f"({lb_cleanup_count} load balancer(s) removed){cleanup_summary}"
+            )
 
         except Exception as e:
             return False, f"Error retrying CloudFormation delete: {str(e)}"

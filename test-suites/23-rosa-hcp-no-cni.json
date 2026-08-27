@@ -1,0 +1,44 @@
+{
+  "name": "CAPA No-CNI (BYO-CNI) Cluster Provisioning",
+  "description": "Provision a ROSA HCP cluster using CAPA with networkType: Other (default OVNKubernetes CNI disabled, bring-your-own CNI) on MCE 5.0 RC (OpenShift 5.0.0-ec.6, candidate channel), with automated network and role configuration",
+  "version": "1.0.0",
+  "tags": ["rosa", "hcp", "provisioning", "no-cni", "byo-cni", "network-automation", "role-automation"],
+  "environment": "mce",
+  "playbooks": [
+    {
+      "name": "Create CAPA No-CNI Cluster",
+      "file": "playbooks/create_rosa_hcp_cluster.yml",
+      "description": "Provisions a ROSA HCP cluster using CAPA with networkType set to Other (BYO-CNI), plus ROSANetwork and ROSARoleConfig automation",
+      "extra_vars": {
+        "openshift_version": "5.0.0-ec.6",
+        "create_rosa_network": true,
+        "create_rosa_role_config": true,
+        "vpc_cidr_block": "10.0.0.0/16",
+        "availability_zone_count": 2,
+        "aws_region": "us-west-2",
+        "channel_group": "candidate",
+        "capi_namespace": "ns-rosa-hcp",
+        "cluster_template_name": "rosa-no-cni-cluster",
+        "selected_template_category": "features",
+        "network_type": "Other"
+      }
+    }
+  ],
+  "documentation": {
+    "overview": "This test suite provisions a ROSA HCP cluster using CAPA with the CNI plugin disabled. The RosaControlPlane is rendered from the rosa-no-cni-cluster feature template, which sets networkType: Other so the default OVNKubernetes CNI is not installed and the user brings their own CNI (BYO-CNI). Validated against MCE 5.0 RC on OpenShift 5.0.0-ec.6 (candidate channel).",
+    "prerequisites": [
+      "MCE/ACM hub cluster (5.0 RC) with CAPI/CAPA configured",
+      "AWS credentials (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY) in vars/user_vars.yml",
+      "OpenShift cluster login credentials configured",
+      "rosa-creds-secret created in multicluster-engine namespace",
+      "A plan/manifests to install a third-party CNI after provisioning (nodes will be NotReady until a CNI is installed)"
+    ],
+    "expected_results": [
+      "ROSANetwork and ROSARoleConfig resources created (network + IAM automation)",
+      "RosaControlPlane applied from the rosa-no-cni-cluster template with networkType: Other",
+      "Cluster provisions with networkType Other (default OVNKubernetes CNI disabled)",
+      "User is responsible for installing a CNI; nodes remain NotReady until a CNI is applied",
+      "Playbook waits for RosaControlPlane status.ready to become true"
+    ]
+  }
+}

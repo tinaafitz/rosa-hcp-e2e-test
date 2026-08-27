@@ -1,0 +1,44 @@
+{
+  "name": "CAPA Private Cluster Provisioning",
+  "description": "Provision a ROSA HCP PrivateLink cluster using CAPA with endpointAccess: Private (no public API/ingress endpoint) on MCE 5.0 RC (OpenShift 5.0.0-ec.6, candidate channel), with automated network and role configuration",
+  "version": "1.0.0",
+  "tags": ["rosa", "hcp", "provisioning", "private", "endpoint-access", "network-automation", "role-automation"],
+  "environment": "mce",
+  "playbooks": [
+    {
+      "name": "Create CAPA Private Cluster",
+      "file": "playbooks/create_rosa_hcp_cluster.yml",
+      "description": "Provisions a ROSA HCP PrivateLink cluster using CAPA with endpointAccess set to Private, plus ROSANetwork and ROSARoleConfig automation",
+      "extra_vars": {
+        "openshift_version": "5.0.0-ec.6",
+        "create_rosa_network": true,
+        "create_rosa_role_config": true,
+        "vpc_cidr_block": "10.0.0.0/16",
+        "availability_zone_count": 2,
+        "aws_region": "us-west-2",
+        "channel_group": "candidate",
+        "capi_namespace": "ns-rosa-hcp",
+        "cluster_template_name": "rosa-private-cluster",
+        "selected_template_category": "features",
+        "endpoint_access": "Private"
+      }
+    }
+  ],
+  "documentation": {
+    "overview": "This test suite provisions a ROSA HCP PrivateLink cluster using CAPA. The RosaControlPlane is rendered from the rosa-private-cluster feature template, which sets endpointAccess: Private so the cluster API and ingress are reachable only over AWS PrivateLink (no public endpoint). Validated against MCE 5.0 RC on OpenShift 5.0.0-ec.6 (candidate channel).",
+    "prerequisites": [
+      "MCE/ACM hub cluster (5.0 RC) with CAPI/CAPA configured",
+      "AWS credentials (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY) in vars/user_vars.yml",
+      "OpenShift cluster login credentials configured",
+      "rosa-creds-secret created in multicluster-engine namespace",
+      "Network reachability to the private cluster endpoint (VPN, bastion, or peered VPC) for post-provision access"
+    ],
+    "expected_results": [
+      "ROSANetwork and ROSARoleConfig resources created (network + IAM automation)",
+      "RosaControlPlane applied from the rosa-private-cluster template with endpointAccess: Private",
+      "Cluster provisions with no public API/ingress endpoint (Private)",
+      "Cluster API and ingress are reachable only over AWS PrivateLink",
+      "Playbook waits for RosaControlPlane status.ready to become true"
+    ]
+  }
+}

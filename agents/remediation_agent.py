@@ -174,8 +174,60 @@ class RemediationAgent(BaseAgent):
         outputs = []
         cleanup_count = 0
         sg_cleanup_count = 0
+        lb_cleanup_count = 0
 
         try:
+            # Step 0: Delete VPC-scoped load balancers FIRST.
+            #
+            # An in-cluster Network Load Balancer (e.g. openshift-ingress/router-default)
+            # is frequently left behind after an HCP cluster deprovisions. That LB owns
+            # service-managed "ela-attach" ENIs which CANNOT be force-detached
+            # (AWS returns "OperationNotPermitted: not allowed to manage 'ela-attach'
+            # attachments"). Those ENIs pin the subnets/IGW and cause DependencyViolation
+            # on VPC delete. Deleting the load balancer releases its ENIs automatically
+            # within ~30-60s, after which the ENI/SG/VPC cleanup below can succeed.
+            self.log("Deleting VPC-scoped load balancers (they hold un-detachable ela-attach ENIs)...", "info")
+            # elbv2 describe-load-balancers has no VPC filter param, so list all and
+            # filter by VpcId in the query.
+            lb_cmd = [
+                "aws", "elbv2", "describe-load-balancers",
+                "--region", region,
+                "--query", f"LoadBalancers[?VpcId=='{vpc_id}'].[LoadBalancerArn,LoadBalancerName,Type]",
+                "--output", "text"
+            ]
+
+            lb_result = subprocess.run(lb_cmd, capture_output=True, text=True, timeout=30)
+
+            if lb_result.returncode == 0 and lb_result.stdout.strip():
+                lbs = lb_result.stdout.strip().split('\n')
+                outputs.append(f"Found {len(lbs)} load balancer(s) in VPC")
+
+                for lb_line in lbs:
+                    parts = lb_line.split('\t')
+                    if len(parts) >= 2:
+                        lb_arn = parts[0]
+                        lb_name = parts[1]
+                        lb_type = parts[2] if len(parts) > 2 else "unknown"
+
+                        delete_lb_cmd = [
+                            "aws", "elbv2", "delete-load-balancer",
+                            "--region", region,
+                            "--load-balancer-arn", lb_arn
+                        ]
+                        delete_lb_result = subprocess.run(delete_lb_cmd, capture_output=True, text=True, timeout=30)
+                        if delete_lb_result.returncode == 0:
+                            outputs.append(f"  ✓ Deleted load balancer {lb_name} ({lb_type})")
+                            lb_cleanup_count += 1
+                        else:
+                            outputs.append(f"  ✗ Failed to delete load balancer {lb_name}: {delete_lb_result.stderr.strip()}")
+
+                # Wait for the load-balancer ENIs to release before touching ENIs/subnets.
+                if lb_cleanup_count > 0:
+                    self.log("Waiting for load-balancer ENIs to release...", "info")
+                    time.sleep(30)
+            else:
+                outputs.append("No load balancers found in VPC")
+
             # Step 1: Find orphaned ENIs tagged with cluster ID
             self.log("Searching for orphaned ENIs...", "info")
             cmd = [
@@ -289,10 +341,10 @@ class RemediationAgent(BaseAgent):
             else:
                 outputs.append("No security groups found")
 
-            summary = f"VPC cleanup completed: {cleanup_count} ENI(s) removed, {sg_cleanup_count} security group(s) deleted"
+            summary = f"VPC cleanup completed: {cleanup_count} ENI(s) removed, {sg_cleanup_count} security group(s) deleted, {lb_cleanup_count} load balancer(s) deleted"
             full_output = "\n".join(outputs)
 
-            self.log(summary, "success" if cleanup_count > 0 else "info")
+            self.log(summary, "success" if (cleanup_count > 0 or lb_cleanup_count > 0) else "info")
 
             return True, f"{summary}\n\nDetails:\n{full_output}"
 

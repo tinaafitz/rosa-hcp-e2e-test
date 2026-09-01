@@ -34,6 +34,10 @@
         dest: "{{ output_dir }}/cluster-api-installer"
         version: "{{ cluster_api_installer_ref | default('main') }}"
         force: true
+      register: clone_capi_result
+      retries: 3
+      delay: 10
+      until: clone_capi_result is not failed
 
     - name: Create capi-system namespace
       shell: |

@@ -7,15 +7,17 @@ supported_versions:
   - "4.20"
   - "4.21"
   - "4.22"
+  - "5.0"
 
 # Default version if none specified
 default_version: "4.22"
 
 # Version validation rules
 validation_rules:
-  version_format: "^4\\.(1[8-9]|2[0-2])$"
+  # Accept 4.18-4.22 and 5.0 (5.0 currently ships only as early-candidate builds)
+  version_format: "^(4\\.(1[8-9]|2[0-2])|5\\.0)$"
   min_supported: "4.18"
-  max_supported: "4.22"
+  max_supported: "5.0"
 
 # Template path patterns
 template_paths:
@@ -111,6 +113,11 @@ resource_requirements:
     min_vcpu: 8
     min_memory: "16Gi"
     min_storage: "200Gi"
+  "5.0":
+    min_nodes: 3
+    min_vcpu: 8
+    min_memory: "16Gi"
+    min_storage: "200Gi"
 
 # Deprecation warnings
 deprecation_warnings:
@@ -122,3 +129,5 @@ deprecation_warnings:
   "4.20": []
   "4.21": []
   "4.22": []
+  "5.0":
+    - "OpenShift 5.0 is an early-candidate (EC) release; use channel_group=candidate to resolve builds via OCM"

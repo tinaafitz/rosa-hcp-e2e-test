@@ -274,13 +274,13 @@
 
     - name: Set OCM cluster facts
       set_fact:
-        ocm_cluster: "{{ ocm_cluster_result.json.items | selectattr('name', 'equalto', cluster_name) | first }}"
+        ocm_cluster: "{{ ocm_cluster_result.json['items'] | selectattr('name', 'equalto', cluster_name) | first }}"
         ocm_available: true
       when:
         - ocm_cluster_result is defined
         - ocm_cluster_result.json is defined
-        - ocm_cluster_result.json.items is defined
-        - ocm_cluster_result.json.items | selectattr('name', 'equalto', cluster_name) | list | length > 0
+        - ocm_cluster_result.json['items'] is defined
+        - ocm_cluster_result.json['items'] | selectattr('name', 'equalto', cluster_name) | list | length > 0
 
     - name: Set OCM unavailable flag
       set_fact:
@@ -1186,9 +1186,9 @@
         - name: Cross-check volume size via OCM node pool (if available)
           assert:
             that:
-              - ocm_disk_node_pools.json.items | length > 0
-              - ocm_disk_node_pools.json.items[0].root_volume is defined
-              - ocm_disk_node_pools.json.items[0].root_volume | length > 0
+              - ocm_disk_node_pools.json['items'] | length > 0
+              - ocm_disk_node_pools.json['items'][0].root_volume is defined
+              - ocm_disk_node_pools.json['items'][0].root_volume | length > 0
             success_msg: "PASS: OCM node pool root_volume data available for cross-check"
           when: ocm_available and ocm_disk_node_pools is defined and ocm_disk_node_pools.json is defined
           ignore_errors: true
@@ -1226,14 +1226,14 @@
         - name: Assert node pool upgrade config via OCM
           assert:
             that:
-              - ocm_node_pools_result.json.items | length > 0
-              - ocm_node_pools_result.json.items[0].management_upgrade is defined
-              - ocm_node_pools_result.json.items[0].management_upgrade.max_surge is defined
+              - ocm_node_pools_result.json['items'] | length > 0
+              - ocm_node_pools_result.json['items'][0].management_upgrade is defined
+              - ocm_node_pools_result.json['items'][0].management_upgrade.max_surge is defined
               - >-
-                ocm_node_pools_result.json.items[0].management_upgrade.max_surge
+                ocm_node_pools_result.json['items'][0].management_upgrade.max_surge
                 | string == expected_max_surge | string
               - >-
-                ocm_node_pools_result.json.items[0].management_upgrade.max_unavailable
+                ocm_node_pools_result.json['items'][0].management_upgrade.max_unavailable
                 | default(0) | string == expected_max_unavailable | string
             fail_msg: >-
               FAIL: OCM node pool upgrade config does not match expected
